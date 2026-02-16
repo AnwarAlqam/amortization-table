@@ -292,7 +292,7 @@ jobs:
               "sudo systemctl reset-failed amortization-table.service || true",
               "sudo systemctl restart amortization-table.service",
               "sleep 2",
-              "sudo systemctl is-active --quiet amortization-table.service || (sudo systemctl status amortization-table.service --no-pager; sudo journalctl -u amortization-table.service -n 300 --no-pager; sudo env ASPNETCORE_URLS=http://127.0.0.1:5290 timeout 12s /opt/${PROJECT_NAME}/backend/amortization-table.Server > /tmp/amortization-direct.log 2>&1 || true; sudo tail -n 200 /tmp/amortization-direct.log || true; exit 1)",
+              "sudo systemctl is-active --quiet amortization-table.service || (sudo systemctl status amortization-table.service --no-pager || true; sudo journalctl -u amortization-table.service -n 300 --no-pager || true; sudo env ASPNETCORE_URLS=http://127.0.0.1:5290 timeout 12s /opt/${PROJECT_NAME}/backend/amortization-table.Server > /tmp/amortization-direct.log 2>&1 || true; sudo tail -n 200 /tmp/amortization-direct.log || true; exit 1)",
               "curl -fsS http://127.0.0.1:5284/weatherforecast > /dev/null || (sudo journalctl -u amortization-table.service -n 200 --no-pager; exit 1)",
               "sudo nginx -t",
               "sudo systemctl restart nginx"
