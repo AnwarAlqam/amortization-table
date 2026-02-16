@@ -1,4 +1,4 @@
-@amortization_table.Server_HostAddress = http://localhost:5284
+@amortization_table.Server_HostAddress = http://127.0.0.1:5284
 
 GET {{amortization_table.Server_HostAddress}}/weatherforecast/
 Accept: application/json

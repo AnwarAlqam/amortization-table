@@ -37,8 +37,8 @@
     browsers: ['Chrome'],
     singleRun: false,
     restartOnFileChange: true,
-    listenAddress: 'localhost',
-    hostname: 'localhost'
+    listenAddress: '127.0.0.1',
+    hostname: '127.0.0.1'
   });
 };
 

@@ -7,7 +7,7 @@
     <RootNamespace>amortization_table.Server</RootNamespace>
     <SpaRoot>..\amortization-table.client</SpaRoot>
     <SpaProxyLaunchCommand>npm start</SpaProxyLaunchCommand>
-    <SpaProxyServerUrl>https://localhost:61394</SpaProxyServerUrl>
+    <SpaProxyServerUrl>https://127.0.0.1:61394</SpaProxyServerUrl>
   </PropertyGroup>
 
   <ItemGroup>
