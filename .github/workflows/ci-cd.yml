@@ -283,12 +283,10 @@ jobs:
           {
             "commands": [
               "set -euo pipefail",
-              "PROJECT_DIR=/opt/${PROJECT_NAME}",
-              "ARTIFACT=/tmp/${GITHUB_SHA}.tar.gz",
-              "aws s3 cp s3://${BUCKET_NAME}/${PACKAGE_KEY} \\$ARTIFACT",
-              "sudo mkdir -p \\$PROJECT_DIR",
-              "sudo tar -xzf \\$ARTIFACT -C \\$PROJECT_DIR",
-              "sudo chmod +x \\$PROJECT_DIR/backend/amortization-table.Server || true",
+              "aws s3 cp s3://${BUCKET_NAME}/${PACKAGE_KEY} /tmp/${GITHUB_SHA}.tar.gz",
+              "sudo mkdir -p /opt/${PROJECT_NAME}",
+              "sudo tar -xzf /tmp/${GITHUB_SHA}.tar.gz -C /opt/${PROJECT_NAME}",
+              "sudo chmod +x /opt/${PROJECT_NAME}/backend/amortization-table.Server || true",
               "sudo systemctl daemon-reload",
               "sudo systemctl restart amortization-table.service",
               "sudo systemctl restart nginx"
