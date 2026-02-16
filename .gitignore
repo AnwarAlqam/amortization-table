@@ -28,6 +28,7 @@ pnpm-debug.log*
 **/.sass-cache/
 **/.history/
 artifacts/
+.tmp/
 
 # ASP.NET / .NET artifacts
 **/[Bb]in/
