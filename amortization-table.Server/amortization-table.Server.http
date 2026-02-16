@@ -1,0 +1,6 @@
+@amortization_table.Server_HostAddress = http://localhost:5284
+
+GET {{amortization_table.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

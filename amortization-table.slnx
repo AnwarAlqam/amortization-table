@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="amortization-table.client/amortization-table.client.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="amortization-table.Server/amortization-table.Server.csproj" />
+</Solution>

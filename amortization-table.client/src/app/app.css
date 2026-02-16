@@ -1,0 +1,458 @@
+:root {
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --text: #111111;
+  --muted: rgba(17, 17, 17, 0.7);
+  --border: rgba(17, 17, 17, 0.14);
+  --hover: rgba(17, 17, 17, 0.06);
+  --badge: rgba(17, 17, 17, 0.08);
+  --req: #c62828;
+  --disabled-bg: rgba(17, 17, 17, 0.08);
+  --disabled-text: rgba(17, 17, 17, 0.55);
+  --table-text: var(--text);
+  /* Column filter (menu) input background */
+  --filter-bg: rgba(17, 17, 17, 0.04);
+  /* ✅ Main form input background (Purchase/Down/Interest/Payment/Term) */
+  --input-bg: rgba(17, 17, 17, 0.03);
+  --input-bg-hover: rgba(17, 17, 17, 0.05);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+  body.dark-theme {
+    --bg: #000000;
+    --surface: #0b0b0b;
+    --text: #ffffff;
+    --muted: rgba(255, 255, 255, 0.72);
+    --border: rgba(255, 255, 255, 0.16);
+    --hover: rgba(255, 255, 255, 0.08);
+    --badge: rgba(255, 255, 255, 0.10);
+    --req: #ff6b6b;
+    --disabled-bg: rgba(255, 255, 255, 0.10);
+    --disabled-text: rgba(255, 255, 255, 0.70);
+    /* Table text should be silver in dark mode */
+    --table-text: #c0c0c0;
+    /* ✅ Column filter background lighter in dark mode */
+    --filter-bg: rgba(255, 255, 255, 0.28);
+    /* ✅ Main form inputs: noticeably lighter than before */
+    --input-bg: rgba(255, 255, 255, 0.14);
+    --input-bg-hover: rgba(255, 255, 255, 0.18);
+  }
+
+.mdc-floating-label--required::after {
+  color: var(--req) !important;
+  opacity: 1 !important;
+  content: " *" !important;
+}
+
+.page {
+  width: 100%;
+  padding: 18px 0 24px 0;
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+/* ---------------------------
+   Top-right icon buttons
+--------------------------- */
+.icon-btn {
+  position: fixed;
+  top: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+  .icon-btn:hover {
+    background: var(--hover);
+  }
+
+  .icon-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+/* Theme toggle (rightmost) */
+.theme-toggle {
+  right: 16px;
+}
+
+/* Export button (left of theme) */
+.export-toggle {
+  right: 68px; /* 44px + 8px gap + 16px */
+}
+
+.theme-icon {
+  width: 20px;
+  height: 20px;
+  display: block;
+  background-color: var(--text);
+  -webkit-mask: url('../assets/icons/dark-theme.svg') no-repeat center / contain;
+  mask: url('../assets/icons/dark-theme.svg') no-repeat center / contain;
+}
+
+.export-icon {
+  width: 20px;
+  height: 20px;
+  display: block;
+  background-color: var(--text);
+  -webkit-mask: url('../assets/icons/export.svg') no-repeat center / contain;
+  mask: url('../assets/icons/export.svg') no-repeat center / contain;
+}
+
+/* Topbar */
+.topbar {
+  width: 70%;
+  margin: 0 auto 14px auto;
+}
+
+@media (max-width: 1100px) {
+  .topbar {
+    width: 92%;
+  }
+}
+
+.brand-title {
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+  font-size: 26px;
+  font-weight: 750;
+  letter-spacing: -0.3px;
+  line-height: 1.15;
+  color: var(--text);
+}
+
+.brand-subtitle {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--muted);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+}
+
+/* Panels */
+.panel,
+.table-wrap {
+  width: 70%;
+  margin: 0 auto;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+@media (max-width: 1100px) {
+  .panel,
+  .table-wrap {
+    width: 92%;
+  }
+}
+
+.panel {
+  padding: 16px 16px 10px 16px;
+}
+
+/* Form */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.req {
+  color: var(--req);
+  font-weight: 800;
+  margin-left: 6px;
+}
+
+.actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 2px;
+  padding-top: 4px;
+}
+
+.error {
+  grid-column: 1 / -1;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--req) 14%, transparent);
+  color: var(--req);
+  font-size: 13px;
+}
+
+/* ---------------------------
+   Inputs (main form fields)
+--------------------------- */
+
+/* Disabled field visibility */
+.mdc-text-field--filled.mdc-text-field--disabled {
+  background-color: var(--disabled-bg) !important;
+  opacity: 1 !important;
+}
+
+.mdc-text-field--disabled .mdc-text-field__input {
+  color: var(--disabled-text) !important;
+  -webkit-text-fill-color: var(--disabled-text) !important;
+}
+
+.mdc-text-field--disabled .mdc-floating-label {
+  color: var(--disabled-text) !important;
+}
+
+/* ✅ Main form FILLED inputs: lighter in dark mode (and subtle in light mode) */
+.mat-mdc-form-field-appearance-fill
+.mdc-text-field--filled:not(.mdc-text-field--disabled) {
+  background-color: var(--input-bg) !important;
+}
+
+  /* Slight hover lift */
+  .mat-mdc-form-field-appearance-fill
+  .mdc-text-field--filled:not(.mdc-text-field--disabled):hover {
+    background-color: var(--input-bg-hover) !important;
+  }
+
+  /* ✅ Fix dark-mode label/input/hint colors */
+  .mat-mdc-form-field-appearance-fill
+  .mdc-text-field--filled:not(.mdc-text-field--disabled) .mdc-floating-label {
+    color: color-mix(in srgb, var(--text) 85%, transparent) !important;
+  }
+
+  .mat-mdc-form-field-appearance-fill
+  .mdc-text-field--filled:not(.mdc-text-field--disabled) .mdc-text-field__input {
+    color: var(--text) !important;
+    -webkit-text-fill-color: var(--text) !important;
+  }
+
+.mat-mdc-form-field .mat-mdc-form-field-hint,
+.mat-mdc-form-field .mat-mdc-form-field-hint-wrapper {
+  color: color-mix(in srgb, var(--text) 80%, transparent) !important;
+}
+
+/* ---------------------------
+   Table: disabled-bg background
+--------------------------- */
+.table-wrap {
+  margin-top: 16px;
+  padding: 10px 10px 14px 10px;
+  overflow: visible;
+  background: var(--disabled-bg);
+  border: 1px solid var(--border);
+}
+
+.table-scroll {
+  overflow-x: auto;
+  position: relative;
+  border-radius: 12px;
+  background: transparent;
+}
+
+/* Table itself */
+.clean-table {
+  width: 100%;
+  background: transparent;
+}
+
+  /* Header/cell padding */
+  .clean-table th.mat-header-cell,
+  .clean-table td.mat-cell,
+  .clean-table th.mat-mdc-header-cell,
+  .clean-table td.mat-mdc-cell {
+    padding: 0 16px !important;
+  }
+
+  /* Table text color (headers + body) */
+  .clean-table th.mat-header-cell,
+  .clean-table td.mat-cell,
+  .clean-table th.mat-mdc-header-cell,
+  .clean-table td.mat-mdc-cell,
+  .clean-table .col-btn,
+  .clean-table .num-cell,
+  .clean-table .term-cell {
+    color: var(--table-text) !important;
+  }
+
+/* Headers centered */
+.center-header {
+  text-align: center;
+}
+
+/* Header button centered */
+.col-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  width: 100%;
+  padding: 16px 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 10px;
+}
+
+  .col-btn:hover {
+    background: var(--hover);
+  }
+
+body.dark-theme .col-btn:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* ✅ center-align for ALL cells */
+.clean-table th.mat-mdc-header-cell,
+.clean-table th.mat-header-cell,
+.clean-table td.mat-mdc-cell,
+.clean-table td.mat-cell,
+.clean-table .mat-mdc-cell,
+.clean-table .mdc-data-table__cell {
+  text-align: center !important;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.num-cell,
+.term-cell {
+  text-align: center !important;
+}
+
+/* Badges */
+.badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--badge);
+  font-weight: 650;
+  opacity: 0.9;
+}
+
+body.dark-theme .badge {
+  color: var(--table-text) !important;
+}
+
+/* ---------------------------
+   Menu styling
+--------------------------- */
+.mat-mdc-menu-panel {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border);
+}
+
+.menu-shell {
+  padding: 10px 10px 8px 10px;
+  width: 280px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.filter-block {
+  padding: 8px 12px 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.filter-field-full {
+  width: 100%;
+  max-width: 240px;
+}
+
+  /* Column filter input bg (outlined) */
+  .filter-field-full .mdc-text-field--outlined {
+    background: var(--filter-bg) !important;
+    border-radius: 10px;
+  }
+
+  .filter-field-full .mat-mdc-text-field-wrapper {
+    background: var(--filter-bg) !important;
+    border-radius: 10px;
+  }
+
+  .filter-field-full .mat-mdc-form-field-focus-overlay {
+    background: transparent !important;
+  }
+
+  .filter-field-full .mdc-notched-outline__leading,
+  .filter-field-full .mdc-notched-outline__notch,
+  .filter-field-full .mdc-notched-outline__trailing {
+    border-color: var(--border) !important;
+  }
+
+  .filter-field-full .mat-mdc-form-field-infix {
+    background: transparent !important;
+  }
+
+  .filter-field-full input.mat-mdc-input-element {
+    color: var(--text) !important;
+    -webkit-text-fill-color: var(--text) !important;
+  }
+
+body.dark-theme .filter-field-full .mdc-floating-label {
+  color: rgba(255, 255, 255, 0.90) !important;
+}
+
+.clear-under {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  width: fit-content;
+}
+
+  .clear-under:hover {
+    background: var(--hover);
+  }
+
+  .clear-under:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+/* Dark mode table background match disabled textbox background */
+body.dark-theme .table-wrap,
+body.dark-theme .table-scroll {
+  background: var(--disabled-bg) !important;
+}
+
+/* Force row backgrounds transparent */
+body.dark-theme .clean-table,
+body.dark-theme .clean-table thead,
+body.dark-theme .clean-table tbody,
+body.dark-theme .clean-table tr.mat-header-row,
+body.dark-theme .clean-table tr.mat-row,
+body.dark-theme .clean-table th.mat-header-cell,
+body.dark-theme .clean-table td.mat-cell,
+body.dark-theme .clean-table th.mat-mdc-header-cell,
+body.dark-theme .clean-table td.mat-mdc-cell {
+  background: transparent !important;
+}
+
+  body.dark-theme .clean-table tr.mat-row td.mat-cell,
+  body.dark-theme .clean-table tr.mat-header-row th.mat-header-cell,
+  body.dark-theme .clean-table tr.mat-mdc-row td.mat-mdc-cell,
+  body.dark-theme .clean-table tr.mat-mdc-header-row th.mat-mdc-header-cell {
+    border-bottom: 1px solid var(--border) !important;
+  }

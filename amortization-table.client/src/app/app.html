@@ -1,0 +1,301 @@
+<div class="page">
+  <!-- Export -->
+  <button type="button"
+          class="icon-btn export-toggle"
+          (click)="exportToExcel()"
+          [disabled]="!hasResults"
+          aria-label="Export to Excel"
+          title="Export to Excel">
+    <span class="export-icon" aria-hidden="true"></span>
+  </button>
+
+  <!-- Theme toggle -->
+  <button type="button"
+          class="icon-btn theme-toggle"
+          (click)="toggleTheme()"
+          [attr.aria-label]="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+          [title]="isDark ? 'Light mode' : 'Dark mode'">
+    <span class="theme-icon" aria-hidden="true"></span>
+  </button>
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-title">Amortization Schedule</div>
+      <div class="brand-subtitle">Enter loan details and generate the schedule</div>
+    </div>
+  </div>
+
+  <div class="panel mat-elevation-z2">
+    <form class="form-grid" (submit)="calculateAmortizationSchedule(); $event.preventDefault()">
+
+      <mat-form-field appearance="fill">
+        <mat-label>Purchase Price</mat-label>
+        <input matInput
+               type="text"
+               inputmode="decimal"
+               placeholder="e.g. 25,000.00"
+               [(ngModel)]="purchasePriceText"
+               (ngModelChange)="onPurchasePriceChange($event)"
+               (focus)="onPurchasePriceFocus()"
+               (blur)="onPurchasePriceBlur()"
+               name="purchasePrice"
+               required />
+      </mat-form-field>
+
+      <mat-form-field appearance="fill">
+        <mat-label>Down Payment</mat-label>
+        <input matInput
+               type="text"
+               inputmode="decimal"
+               placeholder="e.g. 5,000.00"
+               [(ngModel)]="downPaymentText"
+               (ngModelChange)="onDownPaymentChange($event)"
+               (focus)="onDownPaymentFocus()"
+               (blur)="onDownPaymentBlur()"
+               name="downPayment"
+               required />
+      </mat-form-field>
+
+      <mat-form-field appearance="fill">
+        <mat-label>Interest Rate (%)</mat-label>
+        <input matInput
+               type="number"
+               step="0.01"
+               placeholder="e.g. 4.99"
+               [(ngModel)]="interestRate"
+               name="interestRate"
+               required />
+      </mat-form-field>
+
+      <!-- Term Type -->
+      <mat-form-field appearance="fill">
+        <mat-label>Term Type</mat-label>
+        <mat-select [(ngModel)]="termType"
+                    (ngModelChange)="onTermTypeChange($event)"
+                    name="termType">
+          <mat-option *ngFor="let t of termTypeOptions" [value]="t">{{ t }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <!-- Loan Start Date (optional) -->
+      <mat-form-field appearance="fill">
+        <mat-label>Loan Start Date (optional)</mat-label>
+        <input matInput
+               [matDatepicker]="picker"
+               [(ngModel)]="loanStartDate"
+               (ngModelChange)="onLoanStartDateChange()"
+               name="loanStartDate"
+               placeholder="Select a date" />
+        <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+        <mat-datepicker #picker></mat-datepicker>
+        <mat-hint>Used only to label the Term column (does not change math)</mat-hint>
+      </mat-form-field>
+
+      <mat-form-field appearance="fill">
+        <mat-label>{{ paymentLabel() }} <span class="req">*</span></mat-label>
+        <input matInput
+               type="text"
+               inputmode="decimal"
+               placeholder="e.g. 277.59"
+               [disabled]="paymentFrequencyDisabled"
+               [(ngModel)]="paymentFrequencyText"
+               (ngModelChange)="onPaymentFrequencyChange($event)"
+               (focus)="onPaymentFrequencyFocus()"
+               (blur)="onPaymentFrequencyBlur()"
+               name="paymentFrequency" />
+        <mat-hint>Provide either Payment or Term (one is required)</mat-hint>
+      </mat-form-field>
+
+      <mat-form-field appearance="fill">
+        <mat-label>{{ termLabel() }} <span class="req">*</span></mat-label>
+        <input matInput
+               type="number"
+               step="1"
+               placeholder="e.g. 60"
+               [disabled]="termDisabled"
+               [ngModel]="term"
+               name="term"
+               (input)="onTermInput($any($event.target).value)" />
+        <mat-hint>Provide either Term or Payment (one is required)</mat-hint>
+      </mat-form-field>
+
+      <div class="actions">
+        <button type="button"
+                mat-raised-button
+                color="primary"
+                (click)="calculateAmortizationSchedule()"
+                [disabled]="isLoading">
+          {{ isLoading ? 'Applying…' : 'Apply' }}
+        </button>
+
+        <button type="button"
+                mat-stroked-button
+                class="clear-all"
+                [disabled]="!hasAnyFilters()"
+                (click)="clearAllFilters()"
+                title="Clear all table filters">
+          Clear Table Filters
+        </button>
+      </div>
+
+      <div class="error" *ngIf="errorMessage">{{ errorMessage }}</div>
+    </form>
+  </div>
+
+  <!-- TABLE -->
+  <div class="table-wrap mat-elevation-z2" *ngIf="hasResults">
+    <div class="table-scroll">
+      <table mat-table [dataSource]="dataSource" class="mat-table clean-table">
+
+        <!-- Term -->
+        <ng-container matColumnDef="termMonth">
+          <th mat-header-cell *matHeaderCellDef class="header-cell center-header">
+            <button type="button"
+                    class="col-btn center"
+                    [matMenuTriggerFor]="columnMenu"
+                    (click)="prepareColumnMenu('termMonth', $event)">
+              {{ termColumnHeader() }}
+              <span class="badge" *ngIf="isColumnFiltered('termMonth')">Filtered</span>
+              <span class="badge" *ngIf="isColumnSorted('termMonth')">Sorted</span>
+            </button>
+          </th>
+          <td mat-cell *matCellDef="let row" class="term-cell num-cell">
+            {{ getTermLabel(row) }}
+          </td>
+        </ng-container>
+
+        <!-- Beginning Balance -->
+        <ng-container matColumnDef="beginningBalance">
+          <th mat-header-cell *matHeaderCellDef class="header-cell center-header">
+            <button type="button"
+                    class="col-btn center"
+                    [matMenuTriggerFor]="columnMenu"
+                    (click)="prepareColumnMenu('beginningBalance', $event)">
+              Beginning Balance
+              <span class="badge" *ngIf="isColumnFiltered('beginningBalance')">Filtered</span>
+              <span class="badge" *ngIf="isColumnSorted('beginningBalance')">Sorted</span>
+            </button>
+          </th>
+          <td mat-cell *matCellDef="let element" class="num-cell">
+            {{ element.beginningBalance | currency:'USD':'symbol':'1.2-2' }}
+          </td>
+        </ng-container>
+
+        <!-- Payment -->
+        <ng-container matColumnDef="payment">
+          <th mat-header-cell *matHeaderCellDef class="header-cell center-header">
+            <button type="button"
+                    class="col-btn center"
+                    [matMenuTriggerFor]="columnMenu"
+                    (click)="prepareColumnMenu('payment', $event)">
+              Payment
+              <span class="badge" *ngIf="isColumnFiltered('payment')">Filtered</span>
+              <span class="badge" *ngIf="isColumnSorted('payment')">Sorted</span>
+            </button>
+          </th>
+          <td mat-cell *matCellDef="let element" class="num-cell">
+            {{ element.payment | currency:'USD':'symbol':'1.2-2' }}
+          </td>
+        </ng-container>
+
+        <!-- Interest -->
+        <ng-container matColumnDef="interest">
+          <th mat-header-cell *matHeaderCellDef class="header-cell center-header">
+            <button type="button"
+                    class="col-btn center"
+                    [matMenuTriggerFor]="columnMenu"
+                    (click)="prepareColumnMenu('interest', $event)">
+              Interest
+              <span class="badge" *ngIf="isColumnFiltered('interest')">Filtered</span>
+              <span class="badge" *ngIf="isColumnSorted('interest')">Sorted</span>
+            </button>
+          </th>
+          <td mat-cell *matCellDef="let element" class="num-cell">
+            {{ element.interest | currency:'USD':'symbol':'1.2-2' }}
+          </td>
+        </ng-container>
+
+        <!-- Total Interest Paid -->
+        <ng-container matColumnDef="totalInterestPaid">
+          <th mat-header-cell *matHeaderCellDef class="header-cell center-header">
+            <button type="button"
+                    class="col-btn center"
+                    [matMenuTriggerFor]="columnMenu"
+                    (click)="prepareColumnMenu('totalInterestPaid', $event)">
+              Total Interest Paid
+              <span class="badge" *ngIf="isColumnFiltered('totalInterestPaid')">Filtered</span>
+              <span class="badge" *ngIf="isColumnSorted('totalInterestPaid')">Sorted</span>
+            </button>
+          </th>
+          <td mat-cell *matCellDef="let row" class="num-cell">
+            {{ getTotalInterestPaid(row) | currency:'USD':'symbol':'1.2-2' }}
+          </td>
+        </ng-container>
+
+        <!-- Principal -->
+        <ng-container matColumnDef="principal">
+          <th mat-header-cell *matHeaderCellDef class="header-cell center-header">
+            <button type="button"
+                    class="col-btn center"
+                    [matMenuTriggerFor]="columnMenu"
+                    (click)="prepareColumnMenu('principal', $event)">
+              Principal
+              <span class="badge" *ngIf="isColumnFiltered('principal')">Filtered</span>
+              <span class="badge" *ngIf="isColumnSorted('principal')">Sorted</span>
+            </button>
+          </th>
+          <td mat-cell *matCellDef="let element" class="num-cell">
+            {{ element.principal | currency:'USD':'symbol':'1.2-2' }}
+          </td>
+        </ng-container>
+
+        <!-- Ending Balance -->
+        <ng-container matColumnDef="endingBalance">
+          <th mat-header-cell *matHeaderCellDef class="header-cell center-header">
+            <button type="button"
+                    class="col-btn center"
+                    [matMenuTriggerFor]="columnMenu"
+                    (click)="prepareColumnMenu('endingBalance', $event)">
+              Ending Balance
+              <span class="badge" *ngIf="isColumnFiltered('endingBalance')">Filtered</span>
+              <span class="badge" *ngIf="isColumnSorted('endingBalance')">Sorted</span>
+            </button>
+          </th>
+          <td mat-cell *matCellDef="let element" class="num-cell">
+            {{ element.endingBalance | currency:'USD':'symbol':'1.2-2' }}
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Single shared menu -->
+  <mat-menu #columnMenu="matMenu" [overlapTrigger]="false" [xPosition]="menuXPosition" yPosition="below">
+    <div class="menu-shell" (click)="$event.stopPropagation()">
+
+      <button mat-menu-item (click)="cycleSort(activeCol())">
+        {{ sortLabel(activeCol()) }}
+      </button>
+
+      <div class="filter-block">
+        <mat-form-field appearance="outline" class="filter-field-full">
+          <mat-label>Filter</mat-label>
+          <input matInput
+                 placeholder="Type to filter…"
+                 [value]="columnFilters[activeCol()]"
+                 (input)="setColumnFilter(activeCol(), $any($event.target).value)" />
+        </mat-form-field>
+
+        <button type="button"
+                class="clear-under"
+                (click)="clearColumnFilter(activeCol())"
+                [disabled]="!isColumnFiltered(activeCol())">
+          Clear filter
+        </button>
+      </div>
+    </div>
+  </mat-menu>
+</div>
