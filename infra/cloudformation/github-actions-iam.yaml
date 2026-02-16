@@ -1,0 +1,95 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Bootstrap IAM for GitHub Actions deployment:
+  creates (optional) GitHub OIDC provider and an IAM role trusted by your repo/branch.
+
+Parameters:
+  GitHubOrg:
+    Type: String
+    Description: GitHub organization or user name (for example AnwarAlqam).
+
+  GitHubRepo:
+    Type: String
+    Description: GitHub repository name (for example amortization-table).
+
+  DeploymentBranch:
+    Type: String
+    Default: main
+    Description: Git branch allowed to assume the deploy role.
+
+  DeployRoleName:
+    Type: String
+    Default: GitHubActionsAmortizationDeployRole
+    Description: Name for the IAM role assumed by GitHub Actions.
+
+  ExistingOidcProviderArn:
+    Type: String
+    Default: ''
+    Description: >
+      Optional existing GitHub OIDC provider ARN. If empty, this stack creates one.
+
+  GitHubThumbprint:
+    Type: String
+    Default: '6938fd4d98bab03faadb97b34396831e3780aea1'
+    Description: SHA1 thumbprint for token.actions.githubusercontent.com certificate chain.
+
+Conditions:
+  UseExistingOidcProvider: !Not [!Equals [!Ref ExistingOidcProviderArn, '']]
+  CreateOidcProvider: !Not [!Condition UseExistingOidcProvider]
+
+Resources:
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: CreateOidcProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        - !Ref GitHubThumbprint
+
+  GitHubActionsDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref DeployRoleName
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: GitHubAssumeRole
+            Effect: Allow
+            Principal:
+              Federated: !If
+                - UseExistingOidcProvider
+                - !Ref ExistingOidcProviderArn
+                - !Ref GitHubOidcProvider
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                token.actions.githubusercontent.com:sub: !Sub 'repo:${GitHubOrg}/${GitHubRepo}:ref:refs/heads/${DeploymentBranch}'
+      Policies:
+        - PolicyName: GitHubActionsDeployPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: DeployInfraAndApp
+                Effect: Allow
+                Action:
+                  - cloudformation:*
+                  - ec2:*
+                  - iam:*
+                  - route53:*
+                  - s3:*
+                  - ssm:*
+                  - sts:GetCallerIdentity
+                Resource: '*'
+
+Outputs:
+  DeployRoleArn:
+    Description: Role ARN to set as GitHub secret AWS_ROLE_TO_ASSUME
+    Value: !GetAtt GitHubActionsDeployRole.Arn
+
+  OidcProviderArn:
+    Description: GitHub OIDC provider ARN used by the role
+    Value: !If [UseExistingOidcProvider, !Ref ExistingOidcProviderArn, !Ref GitHubOidcProvider]

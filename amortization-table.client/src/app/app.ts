@@ -611,8 +611,7 @@ export class App implements OnInit {
     request.termType = this.termType;
     request.loanStartDate = this.loanStartDate ? this.loanStartDate.toISOString() : null;
 
-    const backendBase = 'http://localhost:5284';
-    const url = `${backendBase}/Amortization/CalculateAmortizationSchedule`;
+    const url = '/Amortization/CalculateAmortizationSchedule';
     const headers = new HttpHeaders({ 'Content-Type': 'application/json', Accept: 'application/json' });
 
     this.isLoading = true;

@@ -1,0 +1,429 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Lightweight AWS infrastructure for amortization-table:
+  VPC, public subnets, routing, security groups, EC2 host, IAM instance profile,
+  S3 deployment bucket, and optional Route53 A record.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: amortization-table
+    Description: Project identifier used in tags and resource names.
+    AllowedPattern: '^[a-zA-Z][a-zA-Z0-9-]{1,30}$'
+
+  EnvironmentName:
+    Type: String
+    Default: prod
+    Description: Environment name tag (for example dev, stage, prod).
+    AllowedPattern: '^[a-zA-Z][a-zA-Z0-9-]{1,15}$'
+
+  VpcCidr:
+    Type: String
+    Default: 10.42.0.0/16
+    Description: CIDR block for the VPC.
+
+  PublicSubnet1Cidr:
+    Type: String
+    Default: 10.42.0.0/24
+    Description: CIDR block for public subnet A.
+
+  PublicSubnet2Cidr:
+    Type: String
+    Default: 10.42.1.0/24
+    Description: CIDR block for public subnet B.
+
+  AllowedSshCidr:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: CIDR block allowed to SSH to EC2 (consider restricting to your IP).
+
+  Ec2InstanceType:
+    Type: String
+    Default: t3.micro
+    Description: EC2 instance type.
+
+  RootVolumeSize:
+    Type: Number
+    Default: 20
+    MinValue: 8
+    MaxValue: 200
+    Description: Root EBS volume size in GiB.
+
+  KeyPairName:
+    Type: String
+    Default: ''
+    Description: Optional EC2 key pair name for SSH access.
+
+  AmiId:
+    Type: String
+    Default: ''
+    Description: Optional AMI ID. Leave empty to use Amazon Linux 2023 latest AMI.
+
+  HostedZoneId:
+    Type: String
+    Default: ''
+    Description: Optional Route53 hosted zone ID.
+
+  RecordName:
+    Type: String
+    Default: ''
+    Description: Optional full DNS record name (for example api.example.com).
+
+Conditions:
+  HasKeyPair: !Not [!Equals [!Ref KeyPairName, '']]
+  HasCustomAmi: !Not [!Equals [!Ref AmiId, '']]
+  HasHostedZoneId: !Not [!Equals [!Ref HostedZoneId, '']]
+  HasRecordName: !Not [!Equals [!Ref RecordName, '']]
+  CreateRoute53Record: !And [!Condition HasHostedZoneId, !Condition HasRecordName]
+
+Resources:
+  AppVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-vpc'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  AppInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-igw'
+
+  AppVpcGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref AppVpc
+      InternetGatewayId: !Ref AppInternetGateway
+
+  AppPublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref AppVpc
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Ref PublicSubnet1Cidr
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-public-a'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  AppPublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref AppVpc
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: !Ref PublicSubnet2Cidr
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-public-b'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  AppPublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref AppVpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-public-rt'
+
+  AppDefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AppVpcGatewayAttachment
+    Properties:
+      RouteTableId: !Ref AppPublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref AppInternetGateway
+
+  AppSubnetAssociationA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref AppPublicSubnetA
+      RouteTableId: !Ref AppPublicRouteTable
+
+  AppSubnetAssociationB:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref AppPublicSubnetB
+      RouteTableId: !Ref AppPublicRouteTable
+
+  AppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub '${ProjectName} inbound rules'
+      VpcId: !Ref AppVpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref AllowedSshCidr
+          Description: SSH access
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: HTTP access
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS access
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-sg'
+
+  DeploymentArtifactsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-artifacts'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  DeploymentArtifactsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DeploymentArtifactsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: '*'
+            Action: s3:*
+            Resource:
+              - !GetAtt DeploymentArtifactsBucket.Arn
+              - !Sub '${DeploymentArtifactsBucket.Arn}/*'
+            Condition:
+              Bool:
+                aws:SecureTransport: false
+
+  AppInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      Policies:
+        - PolicyName: ReadDeploymentArtifacts
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !GetAtt DeploymentArtifactsBucket.Arn
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                Resource: !Sub '${DeploymentArtifactsBucket.Arn}/*'
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+  AppInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref AppInstanceRole
+
+  AppInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !If
+        - HasCustomAmi
+        - !Ref AmiId
+        - !Sub '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}'
+      InstanceType: !Ref Ec2InstanceType
+      IamInstanceProfile: !Ref AppInstanceProfile
+      KeyName: !If [HasKeyPair, !Ref KeyPairName, !Ref AWS::NoValue]
+      SecurityGroupIds:
+        - !Ref AppSecurityGroup
+      SubnetId: !Ref AppPublicSubnetA
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: !Ref RootVolumeSize
+            VolumeType: gp3
+            DeleteOnTermination: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-ec2'
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref EnvironmentName
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -euxo pipefail
+
+          dnf update -y
+          dnf install -y nginx unzip awscli
+
+          mkdir -p /opt/${ProjectName}/backend
+          mkdir -p /opt/${ProjectName}/frontend
+
+          cat > /etc/systemd/system/amortization-table.service <<'EOF'
+          [Unit]
+          Description=Amortization Table API
+          After=network.target
+
+          [Service]
+          Type=simple
+          WorkingDirectory=/opt/${ProjectName}/backend
+          ExecStart=/opt/${ProjectName}/backend/amortization-table.Server
+          Restart=always
+          RestartSec=5
+          Environment=ASPNETCORE_URLS=http://0.0.0.0:5284
+          Environment=ASPNETCORE_ENVIRONMENT=Production
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+
+          cat > /etc/nginx/conf.d/amortization-table.conf <<'EOF'
+          server {
+            listen 80;
+            server_name _;
+
+            root /opt/${ProjectName}/frontend;
+            index index.html;
+
+            location / {
+              try_files $uri $uri/ /index.html;
+            }
+
+            location ~ ^/(Amortization|weatherforecast|openapi) {
+              proxy_pass http://127.0.0.1:5284;
+              proxy_http_version 1.1;
+              proxy_set_header Host $host;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+            }
+          }
+          EOF
+
+          rm -f /etc/nginx/conf.d/default.conf
+
+          systemctl daemon-reload
+          systemctl enable amortization-table.service
+          systemctl enable nginx
+          systemctl enable amazon-ssm-agent
+          systemctl restart amazon-ssm-agent
+          systemctl restart nginx
+
+          if [ -x /opt/${ProjectName}/backend/amortization-table.Server ]; then
+            systemctl restart amortization-table.service
+          fi
+
+  AppElasticIp:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-${EnvironmentName}-eip'
+
+  AppElasticIpAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      InstanceId: !Ref AppInstance
+      AllocationId: !GetAtt AppElasticIp.AllocationId
+
+  AppDnsRecord:
+    Type: AWS::Route53::RecordSet
+    Condition: CreateRoute53Record
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref RecordName
+      Type: A
+      TTL: 60
+      ResourceRecords:
+        - !Ref AppElasticIp
+
+Outputs:
+  VpcId:
+    Description: VPC ID
+    Value: !Ref AppVpc
+
+  PublicSubnetAId:
+    Description: Public subnet A ID
+    Value: !Ref AppPublicSubnetA
+
+  PublicSubnetBId:
+    Description: Public subnet B ID
+    Value: !Ref AppPublicSubnetB
+
+  AppSecurityGroupId:
+    Description: Security group ID
+    Value: !Ref AppSecurityGroup
+
+  AppInstanceId:
+    Description: EC2 instance ID
+    Value: !Ref AppInstance
+
+  DeploymentArtifactsBucketName:
+    Description: S3 bucket used by GitHub Actions for deployment artifacts
+    Value: !Ref DeploymentArtifactsBucket
+
+  DeploymentArtifactsBucketArn:
+    Description: ARN for deployment artifacts bucket
+    Value: !GetAtt DeploymentArtifactsBucket.Arn
+
+  PublicIp:
+    Description: Public elastic IP
+    Value: !Ref AppElasticIp
+
+  Route53RecordName:
+    Description: Created Route53 record name (if configured)
+    Value: !If [CreateRoute53Record, !Ref RecordName, '']
+
+  ApplicationUrl:
+    Description: Primary HTTP URL
+    Value: !If
+      - CreateRoute53Record
+      - !Sub 'http://${RecordName}'
+      - !Sub 'http://${AppElasticIp}'

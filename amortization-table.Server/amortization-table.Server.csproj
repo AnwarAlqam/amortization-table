@@ -7,7 +7,7 @@
     <RootNamespace>amortization_table.Server</RootNamespace>
     <SpaRoot>..\amortization-table.client</SpaRoot>
     <SpaProxyLaunchCommand>npm start</SpaProxyLaunchCommand>
-    <SpaProxyServerUrl>https://localhost:61394</SpaProxyServerUrl>
+    <SpaProxyServerUrl>https://127.0.0.1:61394</SpaProxyServerUrl>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,7 +17,7 @@
     </PackageReference>
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(SkipSpaProjectReference)' != 'true'">
     <ProjectReference Include="..\amortization-table.client\amortization-table.client.esproj">
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
