@@ -283,12 +283,15 @@ jobs:
           {
             "commands": [
               "set -euo pipefail",
-              "aws s3 cp s3://${BUCKET_NAME}/${PACKAGE_KEY} /tmp/${GITHUB_SHA}.tar.gz",
+              "aws s3 cp s3://${BUCKET_NAME}/${PACKAGE_KEY} /tmp/${GITHUB_SHA}.tar.gz --no-progress --only-show-errors",
               "sudo mkdir -p /opt/${PROJECT_NAME}",
               "sudo tar -xzf /tmp/${GITHUB_SHA}.tar.gz -C /opt/${PROJECT_NAME}",
               "sudo chmod +x /opt/${PROJECT_NAME}/backend/amortization-table.Server || true",
-              "sudo dnf install -y curl libicu || true",
+              "test -x /opt/${PROJECT_NAME}/backend/amortization-table.Server || (ls -la /opt/${PROJECT_NAME}/backend; exit 1)",
+              "sudo dnf install -y libicu --skip-broken || true",
+              "if ! command -v curl >/dev/null 2>&1; then sudo dnf install -y curl-minimal --skip-broken || true; fi",
               "sudo systemctl daemon-reload",
+              "sudo systemctl reset-failed amortization-table.service || true",
               "sudo systemctl restart amortization-table.service",
               "sleep 2",
               "sudo systemctl is-active --quiet amortization-table.service || (sudo systemctl status amortization-table.service --no-pager; sudo journalctl -u amortization-table.service -n 200 --no-pager; exit 1)",
