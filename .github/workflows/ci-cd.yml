@@ -43,10 +43,18 @@ jobs:
           -c Release
           -r $DOTNET_RUNTIME
           --self-contained true
+          -p:SelfContained=true
           -p:SkipSpaProjectReference=true
-          --no-build
           --no-restore
           -o artifacts/backend
+
+      - name: Validate backend publish output
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -x artifacts/backend/amortization-table.Server
+          test -f artifacts/backend/libhostfxr.so
+          test -f artifacts/backend/libcoreclr.so
 
       - name: Upload backend artifact
         uses: actions/upload-artifact@v4
@@ -282,9 +290,12 @@ jobs:
             "commands": [
               "set -euo pipefail",
               "aws s3 cp s3://${BUCKET_NAME}/${PACKAGE_KEY} /tmp/${GITHUB_SHA}.tar.gz --no-progress --only-show-errors",
+              "sudo systemctl stop amortization-table.service || true",
+              "sudo rm -rf /opt/${PROJECT_NAME}/backend /opt/${PROJECT_NAME}/frontend",
               "sudo mkdir -p /opt/${PROJECT_NAME}",
               "sudo tar -xzf /tmp/${GITHUB_SHA}.tar.gz -C /opt/${PROJECT_NAME}",
               "sudo chmod +x /opt/${PROJECT_NAME}/backend/amortization-table.Server || true",
+              "test -f /opt/${PROJECT_NAME}/backend/libhostfxr.so || (echo 'Backend publish is not self-contained'; ls -la /opt/${PROJECT_NAME}/backend; exit 1)",
               "test -x /opt/${PROJECT_NAME}/backend/amortization-table.Server || (ls -la /opt/${PROJECT_NAME}/backend; exit 1)",
               "sudo dnf install -y libicu --skip-broken || true",
               "if ! command -v curl >/dev/null 2>&1; then sudo dnf install -y curl-minimal --skip-broken || true; fi",
