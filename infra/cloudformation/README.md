@@ -9,13 +9,17 @@ This folder contains `app-stack.yaml`, a lightweight CloudFormation stack for:
 - S3 deployment artifacts bucket
 - Optional Route53 `A` record
 
+It also contains `github-actions-iam.yaml`, which bootstraps IAM for GitHub Actions OIDC.
+
 ## GitHub Actions requirements
 
-Set this repository secret:
+No GitHub environment is required with the current workflow. It reads repository-level secrets/variables.
+
+Set this repository secret (Settings -> Secrets and variables -> Actions -> Secrets):
 
 - `AWS_ROLE_TO_ASSUME`: IAM role ARN trusted for GitHub OIDC and allowed to deploy CloudFormation/SSM/S3 resources.
 
-Set these repository variables (minimum):
+Set these repository variables (Settings -> Secrets and variables -> Actions -> Variables, minimum):
 
 - `AWS_REGION` (example: `us-east-1`)
 - `AWS_STACK_NAME` (example: `amortization-table-prod`)
@@ -34,6 +38,25 @@ Optional variables (defaults are applied if missing):
 - `ROUTE53_HOSTED_ZONE_ID`
 - `ROUTE53_RECORD_NAME`
 - `EC2_AMI_ID`
+
+## Bootstrap IAM role (recommended)
+
+Deploy `github-actions-iam.yaml` once (from your AWS CLI):
+
+```bash
+aws cloudformation deploy \
+  --stack-name amortization-table-github-iam \
+  --template-file infra/cloudformation/github-actions-iam.yaml \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --parameter-overrides \
+    GitHubOrg=AnwarAlqam \
+    GitHubRepo=amortization-table \
+    DeploymentBranch=main
+```
+
+Then read the role ARN output and set it as `AWS_ROLE_TO_ASSUME` in GitHub secrets.
+
+If your account already has the GitHub OIDC provider, pass `ExistingOidcProviderArn` when deploying.
 
 ## Deployment behavior
 

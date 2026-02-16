@@ -14,6 +14,7 @@ permissions:
 
 env:
   DOTNET_VERSION: '10.0.x'
+  DOTNET_RUNTIME: 'linux-x64'
   NODE_VERSION: '22'
   BACKEND_PROJECT: amortization-table.Server/amortization-table.Server.csproj
   FRONTEND_WORKDIR: amortization-table.client
@@ -30,21 +31,23 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Restore backend
-        run: dotnet restore $BACKEND_PROJECT
+      - name: Restore backend (linux runtime)
+        run: dotnet restore $BACKEND_PROJECT -r $DOTNET_RUNTIME -p:SkipSpaProjectReference=true
 
-      - name: Build backend
-        run: dotnet build $BACKEND_PROJECT -c Release --no-restore
+      - name: Build backend (linux runtime)
+        run: dotnet build $BACKEND_PROJECT -c Release -r $DOTNET_RUNTIME --no-restore -p:SkipSpaProjectReference=true
 
       - name: Publish backend (linux-x64 self-contained)
         run: >
           dotnet publish $BACKEND_PROJECT
           -c Release
-          -r linux-x64
+          -r $DOTNET_RUNTIME
           --self-contained true
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:SkipSpaProjectReference=true
           --no-build
+          --no-restore
           -o artifacts/backend
 
       - name: Upload backend artifact
