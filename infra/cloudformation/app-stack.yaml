@@ -301,7 +301,7 @@ Resources:
           set -euxo pipefail
 
           dnf update -y
-          dnf install -y nginx unzip awscli
+          dnf install -y nginx unzip awscli libicu
 
           mkdir -p /opt/${ProjectName}/backend
           mkdir -p /opt/${ProjectName}/frontend
@@ -317,7 +317,7 @@ Resources:
           ExecStart=/opt/${ProjectName}/backend/amortization-table.Server
           Restart=always
           RestartSec=5
-          Environment=ASPNETCORE_URLS=http://0.0.0.0:5284
+          Environment=ASPNETCORE_URLS=http://127.0.0.1:5284
           Environment=ASPNETCORE_ENVIRONMENT=Production
 
           [Install]
